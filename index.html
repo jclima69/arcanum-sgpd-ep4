@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Arcanum SGPD — Protótipo Navegável EP4</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg-deep:    #0D0B1A;
+  --bg-dark:    #12102A;
+  --bg-card:    #1A1735;
+  --bg-hover:   #221F42;
+  --purple:     #6C5CE7;
+  --purple-dim: #3C3489;
+  --purple-glow:#8B7FFF;
+  --teal:       #00C9A7;
+  --teal-dim:   #1D9E75;
+  --amber:      #F4A338;
+  --amber-dim:  #BA7517;
+  --red:        #E84855;
+  --red-dim:    #993C1D;
+  --gold:       #D4AF37;
+  --text-hi:    #F0EEF8;
+  --text-mid:   #9B99B8;
+  --text-lo:    #5A5875;
+  --border:     rgba(108,92,231,0.2);
+  --border-hi:  rgba(108,92,231,0.5);
+  --glow:       0 0 20px rgba(108,92,231,0.3);
+  --r:          8px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { height:100%; background:var(--bg-deep); color:var(--text-hi); font-family:'Crimson Pro',serif; overflow:hidden; }
+
+/* ── SCREEN SYSTEM ───────────────────────────────── */
+.screen { display:none; width:100vw; height:100vh; position:absolute; inset:0; }
+.screen.active { display:flex; animation:fadeIn .25s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+/* ── SIDEBAR ─────────────────────────────────────── */
+.sidebar {
+  width:220px; min-height:100vh; background:var(--bg-dark);
+  border-right:1px solid var(--border); padding:0; display:flex; flex-direction:column;
+  flex-shrink:0;
+}
+.sidebar-logo {
+  padding:28px 20px 20px; border-bottom:1px solid var(--border);
+}
+.sidebar-logo .wordmark {
+  font-family:'Cinzel',serif; font-size:20px; font-weight:700;
+  color:var(--gold); letter-spacing:.12em; display:block;
+}
+.sidebar-logo .tagline { font-size:11px; color:var(--text-lo); font-style:italic; margin-top:3px; }
+.sidebar-user {
+  padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px;
+}
+.avatar { width:34px; height:34px; border-radius:50%; background:var(--purple-dim); display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:12px; font-weight:700; color:var(--gold); flex-shrink:0; }
+.user-name { font-size:13px; font-weight:600; color:var(--text-hi); }
+.user-role { font-size:11px; color:var(--text-mid); }
+.maestria-bar { margin-top:5px; height:3px; background:var(--bg-hover); border-radius:3px; width:100%; }
+.maestria-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,var(--purple),var(--teal)); }
+nav { flex:1; padding:12px 0; }
+.nav-item {
+  display:flex; align-items:center; gap:10px; padding:10px 20px;
+  font-size:13px; color:var(--text-mid); cursor:pointer; border-left:3px solid transparent;
+  transition:all .15s;
+}
+.nav-item:hover { background:var(--bg-hover); color:var(--text-hi); }
+.nav-item.active { color:var(--purple-glow); border-left-color:var(--purple); background:rgba(108,92,231,.08); }
+.nav-icon { font-size:16px; width:20px; text-align:center; }
+.sidebar-bottom { padding:16px 20px; border-top:1px solid var(--border); }
+.logout-btn { font-size:12px; color:var(--text-lo); cursor:pointer; }
+.logout-btn:hover { color:var(--red); }
+
+/* ── MAIN CONTENT ────────────────────────────────── */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.topbar {
+  padding:16px 28px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+  background:var(--bg-dark);
+}
+.breadcrumb { font-size:12px; color:var(--text-lo); }
+.breadcrumb span { color:var(--text-mid); }
+.breadcrumb .current { color:var(--text-hi); font-weight:600; }
+.page-title { font-family:'Cinzel',serif; font-size:22px; font-weight:600; color:var(--text-hi); letter-spacing:.04em; }
+.content { flex:1; overflow-y:auto; padding:28px; }
+.content::-webkit-scrollbar { width:4px; }
+.content::-webkit-scrollbar-thumb { background:var(--border-hi); border-radius:4px; }
+
+/* ── COMPONENTS ──────────────────────────────────── */
+.card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r);
+  padding:20px;
+}
+.card-title { font-family:'Cinzel',serif; font-size:13px; font-weight:600; color:var(--gold); letter-spacing:.06em; margin-bottom:16px; text-transform:uppercase; }
+
+.stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
+.stat-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r);
+  padding:20px; position:relative; overflow:hidden;
+}
+.stat-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(108,92,231,.06),transparent); }
+.stat-num { font-family:'Cinzel',serif; font-size:32px; font-weight:700; color:var(--purple-glow); }
+.stat-label { font-size:12px; color:var(--text-mid); margin-top:4px; }
+.stat-card.teal .stat-num { color:var(--teal); }
+.stat-card.amber .stat-num { color:var(--amber); }
+.stat-card.red .stat-num { color:var(--red); }
+
+/* BUTTONS */
+.btn {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:10px 20px; border-radius:var(--r); font-size:13px; font-weight:600;
+  cursor:pointer; border:none; transition:all .15s; font-family:'Crimson Pro',serif;
+}
+.btn-primary { background:var(--purple); color:#fff; }
+.btn-primary:hover { background:var(--purple-glow); box-shadow:var(--glow); }
+.btn-secondary { background:var(--bg-hover); color:var(--text-mid); border:1px solid var(--border); }
+.btn-secondary:hover { color:var(--text-hi); border-color:var(--border-hi); }
+.btn-success { background:var(--teal-dim); color:#fff; }
+.btn-success:hover { background:var(--teal); }
+.btn-danger { background:var(--red-dim); color:#fff; }
+.btn-danger:hover { background:var(--red); }
+.btn-sm { padding:6px 14px; font-size:12px; }
+.btn-gold { background:transparent; border:1px solid var(--gold); color:var(--gold); }
+.btn-gold:hover { background:rgba(212,175,55,.1); }
+
+/* BADGES */
+.badge {
+  display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px;
+  font-size:11px; font-weight:600; font-family:'JetBrains Mono',monospace; letter-spacing:.03em;
+}
+.badge-p1 { background:rgba(0,201,167,.15); color:var(--teal); border:1px solid rgba(0,201,167,.3); }
+.badge-p2 { background:rgba(108,92,231,.15); color:var(--purple-glow); border:1px solid rgba(108,92,231,.3); }
+.badge-p3 { background:rgba(244,163,56,.15); color:var(--amber); border:1px solid rgba(244,163,56,.3); }
+.badge-p4 { background:rgba(232,72,85,.15); color:var(--red); border:1px solid rgba(232,72,85,.3); }
+.badge-p5 { background:rgba(232,72,85,.3); color:#ff6b6b; border:1px solid rgba(232,72,85,.5); }
+.badge-avail { background:rgba(0,201,167,.15); color:var(--teal); }
+.badge-reserv { background:rgba(244,163,56,.15); color:var(--amber); }
+.badge-analise { background:rgba(108,92,231,.15); color:var(--purple-glow); }
+.badge-pend { background:rgba(244,163,56,.15); color:var(--amber); }
+.badge-aprov { background:rgba(0,201,167,.15); color:var(--teal); }
+.badge-recus { background:rgba(232,72,85,.15); color:var(--red); }
+
+/* FORMS */
+.form-group { margin-bottom:18px; }
+.form-label { display:block; font-size:12px; color:var(--text-mid); margin-bottom:6px; font-family:'JetBrains Mono',monospace; letter-spacing:.04em; text-transform:uppercase; }
+.form-input, .form-select, .form-textarea {
+  width:100%; background:var(--bg-deep); border:1px solid var(--border);
+  border-radius:var(--r); padding:10px 14px; font-size:14px; color:var(--text-hi);
+  font-family:'Crimson Pro',serif; transition:border-color .15s;
+  outline:none;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--purple); box-shadow:0 0 0 3px rgba(108,92,231,.1); }
+.form-textarea { resize:vertical; min-height:100px; }
+.form-select option { background:var(--bg-dark); }
+.form-error { border-color:var(--red) !important; }
+.error-msg { font-size:11px; color:var(--red); margin-top:4px; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+/* TABLE */
+.arc-table { width:100%; border-collapse:collapse; }
+.arc-table th { padding:10px 14px; text-align:left; font-size:11px; color:var(--text-lo); font-family:'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; border-bottom:1px solid var(--border); }
+.arc-table td { padding:12px 14px; font-size:13px; border-bottom:1px solid rgba(108,92,231,.08); }
+.arc-table tr:hover td { background:var(--bg-hover); }
+.arc-table tr.clickable { cursor:pointer; }
+
+/* RELIC CARDS */
+.relic-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
+.relic-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r);
+  padding:18px; cursor:pointer; transition:all .2s; position:relative; overflow:hidden;
+}
+.relic-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--purple),var(--teal)); opacity:0; transition:.2s; }
+.relic-card:hover { border-color:var(--border-hi); transform:translateY(-2px); box-shadow:var(--glow); }
+.relic-card:hover::before { opacity:1; }
+.relic-name { font-family:'Cinzel',serif; font-size:14px; font-weight:600; color:var(--text-hi); margin-bottom:8px; }
+.relic-meta { font-size:12px; color:var(--text-mid); margin-bottom:10px; }
+.relic-footer { display:flex; align-items:center; justify-content:space-between; }
+
+/* SEARCH */
+.search-bar {
+  display:flex; gap:12px; margin-bottom:20px; align-items:flex-end; flex-wrap:wrap;
+}
+.search-input-wrap { flex:1; min-width:200px; }
+.filter-wrap { min-width:160px; }
+
+/* ALERT */
+.alert { display:flex; align-items:flex-start; gap:12px; padding:14px 16px; border-radius:var(--r); margin-bottom:12px; }
+.alert-warn { background:rgba(244,163,56,.1); border:1px solid rgba(244,163,56,.3); }
+.alert-danger { background:rgba(232,72,85,.1); border:1px solid rgba(232,72,85,.3); }
+.alert-info { background:rgba(108,92,231,.1); border:1px solid rgba(108,92,231,.3); }
+.alert-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+.alert-text { font-size:13px; color:var(--text-mid); }
+.alert-text strong { color:var(--text-hi); }
+
+/* SECTION TITLE */
+.section-title { font-family:'Cinzel',serif; font-size:13px; font-weight:600; color:var(--text-mid); letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+
+/* DETAIL FIELD */
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.detail-field { }
+.detail-key { font-size:11px; color:var(--text-lo); font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.05em; margin-bottom:3px; }
+.detail-val { font-size:14px; color:var(--text-hi); }
+
+/* TOAST */
+.toast {
+  position:fixed; top:20px; right:20px; z-index:1000;
+  background:var(--bg-card); border:1px solid var(--teal); border-radius:var(--r);
+  padding:14px 20px; font-size:13px; color:var(--teal);
+  display:none; animation:slideIn .3s ease;
+  box-shadow:0 4px 20px rgba(0,201,167,.2);
+}
+@keyframes slideIn { from{transform:translateX(30px);opacity:0} to{transform:none;opacity:1} }
+
+/* DIVIDER */
+.divider { height:1px; background:var(--border); margin:20px 0; }
+
+/* PROFILE MINI */
+.profile-mini {
+  display:flex; align-items:center; gap:12px; padding:14px;
+  background:var(--bg-deep); border-radius:var(--r); border:1px solid var(--border); margin-bottom:16px;
+}
+.profile-mini .av { width:40px; height:40px; border-radius:50%; background:var(--purple-dim); display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-weight:700; color:var(--gold); }
+.maestria-label { font-size:11px; color:var(--text-lo); margin-top:2px; }
+.maestria-row { display:flex; align-items:center; gap:8px; margin-top:4px; }
+.maestria-bar-sm { height:4px; width:120px; background:var(--bg-hover); border-radius:4px; }
+.maestria-fill-sm { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--purple),var(--teal)); }
+.maestria-pct { font-size:12px; color:var(--purple-glow); font-family:'JetBrains Mono',monospace; }
+
+/* PERIGO INDICATOR */
+.perigo-scale { display:flex; gap:4px; }
+.perigo-dot { width:12px; height:12px; border-radius:50%; background:var(--bg-hover); }
+.perigo-dot.active { }
+.p1 .perigo-dot.active { background:var(--teal); }
+.p2 .perigo-dot.active { background:#7BE8D5; }
+.p3 .perigo-dot.active { background:var(--amber); }
+.p4 .perigo-dot.active { background:#E87A3A; }
+.p5 .perigo-dot.active { background:var(--red); }
+
+/* ══════════════════════════════════════════════════
+   T1 — LOGIN
+══════════════════════════════════════════════════ */
+#t1 { background:var(--bg-deep); align-items:center; justify-content:center; flex-direction:column; position:relative; overflow:hidden; }
+#t1::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 60% at 50% 40%, rgba(108,92,231,.12), transparent);
+  pointer-events:none;
+}
+.login-box {
+  width:400px; background:var(--bg-dark); border:1px solid var(--border-hi);
+  border-radius:12px; padding:40px; position:relative; z-index:1;
+  box-shadow:0 0 60px rgba(108,92,231,.15);
+}
+.login-logo { text-align:center; margin-bottom:32px; }
+.login-logo .glyph { font-size:40px; margin-bottom:8px; display:block; }
+.login-logo .wordmark { font-family:'Cinzel',serif; font-size:28px; font-weight:700; color:var(--gold); letter-spacing:.15em; }
+.login-logo .sub { font-size:12px; color:var(--text-lo); letter-spacing:.08em; margin-top:4px; font-style:italic; }
+.login-divider { height:1px; background:linear-gradient(90deg,transparent,var(--border-hi),transparent); margin:20px 0; }
+.login-footer { text-align:center; font-size:11px; color:var(--text-lo); margin-top:20px; }
+.perfil-select { display:flex; gap:10px; margin-bottom:20px; }
+.perfil-btn {
+  flex:1; padding:10px; border-radius:var(--r); border:1px solid var(--border);
+  background:var(--bg-deep); color:var(--text-mid); font-size:12px; cursor:pointer;
+  text-align:center; transition:all .15s; font-family:'Crimson Pro',serif;
+}
+.perfil-btn:hover, .perfil-btn.sel { border-color:var(--purple); color:var(--purple-glow); background:rgba(108,92,231,.08); }
+
+/* ══════════════════════════════════════════════════
+   SCREEN LAYOUT (with sidebar)
+══════════════════════════════════════════════════ */
+.with-sidebar { flex-direction:row; }
+.screen-main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+/* ══════════════════════════════════════════════════
+   MISC LAYOUT HELPERS
+══════════════════════════════════════════════════ */
+.flex { display:flex; }
+.flex-between { display:flex; align-items:center; justify-content:space-between; }
+.flex-gap { display:flex; gap:12px; align-items:center; }
+.mt8 { margin-top:8px; }
+.mt16 { margin-top:16px; }
+.mt20 { margin-top:20px; }
+.mb8 { margin-bottom:8px; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast">✓ Operação realizada com sucesso</div>
+
+<!-- ══════════════════════════════════════════════════
+     T1 — LOGIN
+══════════════════════════════════════════════════ -->
+<div id="t1" class="screen active">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="glyph">⬡</span>
+      <div class="wordmark">ARCANUM</div>
+      <div class="sub">Sistema de Gestão de Processos Digitais</div>
+    </div>
+    <div class="login-divider"></div>
+    <div class="form-group">
+      <label class="form-label">Perfil de acesso</label>
+      <div class="perfil-select">
+        <div class="perfil-btn sel" onclick="selectPerfil(this,'guardiao')">⚔ Guardião</div>
+        <div class="perfil-btn" onclick="selectPerfil(this,'arquivista')">📋 Arquivista Chefe</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">E-mail</label>
+      <input class="form-input" type="email" value="theron@arcanum.sec" placeholder="seu@arcanum.sec"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Senha</label>
+      <input class="form-input" type="password" value="••••••••" placeholder="Senha secreta"/>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()">Entrar no Sistema</button>
+    <div class="login-footer">Acesso restrito — Nível Sigma · v3.7.1</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     T2 — DASHBOARD GUARDIÃO
+══════════════════════════════════════════════════ -->
+<div id="t2" class="screen with-sidebar">
+  <div class="sidebar">
+    <div class="sidebar-logo"><span class="wordmark">⬡ ARCANUM</span><span class="tagline">Gestão de Relíquias</span></div>
+    <div class="sidebar-user">
+      <div class="avatar">TH</div>
+      <div><div class="user-name">Theron Vael</div><div class="user-role">Guardião · Nível Sigma</div><div class="maestria-bar mt8"><div class="maestria-fill" style="width:82%"></div></div></div>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="goto('t2')"><span class="nav-icon">⬡</span>Dashboard</div>
+      <div class="nav-item" onclick="goto('t3')"><span class="nav-icon">🔍</span>Buscar Relíquia</div>
+      <div class="nav-item" onclick="goto('t5')"><span class="nav-icon">📜</span>Nova Solicitação</div>
+    </nav>
+    <div class="sidebar-bottom"><div class="logout-btn" onclick="goto('t1')">↩ Sair</div></div>
+  </div>
+  <div class="screen-main">
+    <div class="topbar">
+      <div><div class="breadcrumb"><span class="current">Dashboard</span></div><div class="page-title" style="margin-top:4px;">Bem-vindo, Theron</div></div>
+      <div class="flex-gap"><span class="badge badge-p3">Maestria: 82%</span><button class="btn btn-primary btn-sm" onclick="goto('t3')">+ Nova Solicitação</button></div>
+    </div>
+    <div class="content">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-num">2</div><div class="stat-label">Solicitações em aberto</div></div>
+        <div class="stat-card teal"><div class="stat-num">3</div><div class="stat-label">Relíquias sob custódia</div></div>
+        <div class="stat-card amber"><div class="stat-num">1</div><div class="stat-label">Relatório pendente</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Minhas Solicitações</div>
+          <table class="arc-table">
+            <thead><tr><th>Relíquia</th><th>Status</th><th>Prazo</th></tr></thead>
+            <tbody>
+              <tr class="clickable" onclick="goto('t5')"><td>Cajado de Eldoria</td><td><span class="badge badge-pend">Aguardando</span></td><td style="color:var(--text-mid);font-size:12px">15 Mai</td></tr>
+              <tr class="clickable" onclick="goto('t5')"><td>Espelho da Dualidade</td><td><span class="badge badge-aprov">Aprovada</span></td><td style="color:var(--text-mid);font-size:12px">22 Mai</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">Custódia Atual</div>
+          <table class="arc-table">
+            <thead><tr><th>Relíquia</th><th>Perigo</th><th>Prazo</th></tr></thead>
+            <tbody>
+              <tr><td>Âmbar de Vortan</td><td><span class="badge badge-p2">Nível 2</span></td><td style="color:var(--teal);font-size:12px">8 Jun</td></tr>
+              <tr><td>Grimório das Sombras</td><td><span class="badge badge-p4">Nível 4</span></td><td style="color:var(--amber);font-size:12px">2 Jun</td></tr>
+              <tr><td>Lâmina do Véu</td><td><span class="badge badge-p3">Nível 3</span></td><td style="color:var(--teal);font-size:12px">18 Jun</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="alert alert-warn mt20"><span class="alert-icon">⚠</span><div class="alert-text"><strong>Relatório pendente:</strong> O Grimório das Sombras requer registro de status. Prazo: 3 dias.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     T3 — BUSCAR RELÍQUIA
+══════════════════════════════════════════════════ -->
+<div id="t3" class="screen with-sidebar">
+  <div class="sidebar">
+    <div class="sidebar-logo"><span class="wordmark">⬡ ARCANUM</span><span class="tagline">Gestão de Relíquias</span></div>
+    <div class="sidebar-user"><div class="avatar">TH</div><div><div class="user-name">Theron Vael</div><div class="user-role">Guardião · Nível Sigma</div><div class="maestria-bar mt8"><div class="maestria-fill" style="width:82%"></div></div></div></div>
+    <nav>
+      <div class="nav-item" onclick="goto('t2')"><span class="nav-icon">⬡</span>Dashboard</div>
+      <div class="nav-item active" onclick="goto('t3')"><span class="nav-icon">🔍</span>Buscar Relíquia</div>
+      <div class="nav-item" onclick="goto('t5')"><span class="nav-icon">📜</span>Nova Solicitação</div>
+    </nav>
+    <div class="sidebar-bottom"><div class="logout-btn" onclick="goto('t1')">↩ Sair</div></div>
+  </div>
+  <div class="screen-main">
+    <div class="topbar">
+      <div><div class="breadcrumb"><span>Dashboard</span> / <span class="current">Buscar Relíquia</span></div><div class="page-title" style="margin-top:4px;">Acervo de Relíquias</div></div>
+      <span style="font-size:12px;color:var(--text-lo);">4.200+ itens catalogados</span>
+    </div>
+    <div class="content">
+      <div class="card mb8" style="margin-bottom:20px">
+        <div class="search-bar" style="margin-bottom:0">
+          <div class="search-input-wrap"><label class="form-label">Buscar</label><input class="form-input" type="text" placeholder="Nome, feitiço, material…" id="searchInput"/></div>
+          <div class="filter-wrap"><label class="form-label">Escola Mágica</label><select class="form-select"><option>Todas</option><option>Elemental</option><option>Necromancia</option><option>Ilusão</option><option>Divinação</option><option>Transmutação</option></select></div>
+          <div class="filter-wrap"><label class="form-label">Nível de Perigo</label><select class="form-select"><option>Todos</option><option>Nível 1</option><option>Nível 2</option><option>Nível 3</option><option>Nível 4</option><option>Nível 5</option></select></div>
+          <div class="filter-wrap"><label class="form-label">Disponibilidade</label><select class="form-select"><option>Todas</option><option>Disponível</option><option>Reservada</option></select></div>
+          <div style="align-self:flex-end"><button class="btn btn-primary">Buscar</button></div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text-lo);margin-bottom:14px;">Mostrando 6 resultados · Tempo de resposta: 0.8s</div>
+      <div class="relic-grid">
+        <div class="relic-card" onclick="goto('t4')">
+          <div class="relic-name">Cajado de Eldoria</div>
+          <div class="relic-meta">Elemental · Afinidade: Fogo</div>
+          <div class="relic-footer"><span class="badge badge-p3">Nível 3</span><span class="badge badge-avail">Disponível</span></div>
+        </div>
+        <div class="relic-card" onclick="goto('t4')">
+          <div class="relic-name">Espelho da Dualidade</div>
+          <div class="relic-meta">Ilusão · Afinidade: Éter</div>
+          <div class="relic-footer"><span class="badge badge-p4">Nível 4</span><span class="badge badge-avail">Disponível</span></div>
+        </div>
+        <div class="relic-card" onclick="goto('t4')">
+          <div class="relic-name">Anel do Vazio Eterno</div>
+          <div class="relic-meta">Necromancia · Afinidade: Sombra</div>
+          <div class="relic-footer"><span class="badge badge-p5">Nível 5</span><span class="badge badge-reserv">Reservada</span></div>
+        </div>
+        <div class="relic-card" onclick="goto('t4')">
+          <div class="relic-name">Lâmina de Kael'Drath</div>
+          <div class="relic-meta">Transmutação · Afinidade: Metal</div>
+          <div class="relic-footer"><span class="badge badge-p2">Nível 2</span><span class="badge badge-avail">Disponível</span></div>
+        </div>
+        <div class="relic-card" onclick="goto('t4')">
+          <div class="relic-name">Orbe da Presciência</div>
+          <div class="relic-meta">Divinação · Afinidade: Luz</div>
+          <div class="relic-footer"><span class="badge badge-p1">Nível 1</span><span class="badge badge-avail">Disponível</span></div>
+        </div>
+        <div class="relic-card" onclick="goto('t4')">
+          <div class="relic-name">Tomo das Almas Perdidas</div>
+          <div class="relic-meta">Necromancia · Afinidade: Morte</div>
+          <div class="relic-footer"><span class="badge badge-p5">Nível 5</span><span class="badge badge-avail">Disponível</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     T4 — DETALHE DA RELÍQUIA
+══════════════════════════════════════════════════ -->
+<div id="t4" class="screen with-sidebar">
+  <div class="sidebar">
+    <div class="sidebar-logo"><span class="wordmark">⬡ ARCANUM</span><span class="tagline">Gestão de Relíquias</span></div>
+    <div class="sidebar-user"><div class="avatar">TH</div><div><div class="user-name">Theron Vael</div><div class="user-role">Guardião · Nível Sigma</div><div class="maestria-bar mt8"><div class="maestria-fill" style="width:82%"></div></div></div></div>
+    <nav>
+      <div class="nav-item" onclick="goto('t2')"><span class="nav-icon">⬡</span>Dashboard</div>
+      <div class="nav-item active" onclick="goto('t3')"><span class="nav-icon">🔍</span>Buscar Relíquia</div>
+      <div class="nav-item" onclick="goto('t5')"><span class="nav-icon">📜</span>Nova Solicitação</div>
+    </nav>
+    <div class="sidebar-bottom"><div class="logout-btn" onclick="goto('t1')">↩ Sair</div></div>
+  </div>
+  <div class="screen-main">
+    <div class="topbar">
+      <div><div class="breadcrumb"><span onclick="goto('t3')" style="cursor:pointer">Buscar</span> / <span class="current">Cajado de Eldoria</span></div><div class="page-title" style="margin-top:4px;">Detalhe da Relíquia</div></div>
+      <button class="btn btn-primary" onclick="goto('t5')">📜 Solicitar Empréstimo</button>
+    </div>
+    <div class="content">
+      <div class="two-col">
+        <div class="card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+            <div><div style="font-family:'Cinzel',serif;font-size:20px;font-weight:700;color:var(--text-hi)">Cajado de Eldoria</div><div style="font-size:13px;color:var(--text-mid);margin-top:4px">ID: ARC-00541</div></div>
+            <div class="flex-gap"><span class="badge badge-p3">Nível 3</span><span class="badge badge-avail">Disponível</span></div>
+          </div>
+          <div class="divider"></div>
+          <div class="detail-grid">
+            <div class="detail-field"><div class="detail-key">Material</div><div class="detail-val">Madeira de Yew + Cristal Arcano</div></div>
+            <div class="detail-field"><div class="detail-key">Data de Descoberta</div><div class="detail-val">14 Mar 1847</div></div>
+            <div class="detail-field"><div class="detail-key">Escola Mágica</div><div class="detail-val">Elemental</div></div>
+            <div class="detail-field"><div class="detail-key">Afinidade Elemental</div><div class="detail-val">Fogo / Éter</div></div>
+            <div class="detail-field"><div class="detail-key">Nível de Perigo</div><div class="detail-val"><div class="perigo-scale p3" style="margin-top:4px">
+              <div class="perigo-dot active"></div><div class="perigo-dot active"></div><div class="perigo-dot active"></div><div class="perigo-dot"></div><div class="perigo-dot"></div>
+            </div></div></div>
+            <div class="detail-field"><div class="detail-key">Status</div><div class="detail-val" style="color:var(--teal)">Disponível para empréstimo</div></div>
+          </div>
+          <div class="divider"></div>
+          <div class="detail-key mb8">Feitiços Associados</div>
+          <div class="flex-gap" style="flex-wrap:wrap;gap:8px">
+            <span class="badge badge-p2">Chama Arcana</span>
+            <span class="badge badge-p2">Vórtice de Fogo</span>
+            <span class="badge badge-p2">Escudo Ígneo</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-title">Histórico de Custódia</div>
+            <table class="arc-table">
+              <thead><tr><th>Guardião</th><th>Período</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>Mira Solvane</td><td style="font-size:12px;color:var(--text-mid)">Jan–Mar 2025</td><td><span class="badge badge-aprov">Devolvida</span></td></tr>
+                <tr><td>Caelum Drak</td><td style="font-size:12px;color:var(--text-mid)">Out–Dez 2024</td><td><span class="badge badge-aprov">Devolvida</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-title">Requisitos de Acesso</div>
+            <div class="detail-field mb8"><div class="detail-key">Maestria mínima</div><div class="detail-val">Nível 3 — 60%</div></div>
+            <div class="alert alert-info" style="margin-bottom:0"><span class="alert-icon">ℹ</span><div class="alert-text">Seu nível de maestria (82%) é <strong>compatível</strong> com esta relíquia.</div></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px" onclick="goto('t5')">📜 Solicitar Empréstimo Secreto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     T5 — SOLICITAR EMPRÉSTIMO
+══════════════════════════════════════════════════ -->
+<div id="t5" class="screen with-sidebar">
+  <div class="sidebar">
+    <div class="sidebar-logo"><span class="wordmark">⬡ ARCANUM</span><span class="tagline">Gestão de Relíquias</span></div>
+    <div class="sidebar-user"><div class="avatar">TH</div><div><div class="user-name">Theron Vael</div><div class="user-role">Guardião · Nível Sigma</div><div class="maestria-bar mt8"><div class="maestria-fill" style="width:82%"></div></div></div></div>
+    <nav>
+      <div class="nav-item" onclick="goto('t2')"><span class="nav-icon">⬡</span>Dashboard</div>
+      <div class="nav-item" onclick="goto('t3')"><span class="nav-icon">🔍</span>Buscar Relíquia</div>
+      <div class="nav-item active" onclick="goto('t5')"><span class="nav-icon">📜</span>Nova Solicitação</div>
+    </nav>
+    <div class="sidebar-bottom"><div class="logout-btn" onclick="goto('t1')">↩ Sair</div></div>
+  </div>
+  <div class="screen-main">
+    <div class="topbar">
+      <div><div class="breadcrumb"><span onclick="goto('t4')" style="cursor:pointer">Cajado de Eldoria</span> / <span class="current">Solicitar Empréstimo</span></div><div class="page-title" style="margin-top:4px;">Solicitar Empréstimo Secreto</div></div>
+    </div>
+    <div class="content">
+      <div class="two-col">
+        <div>
+          <div class="card mb8" style="margin-bottom:16px">
+            <div class="card-title">Relíquia Selecionada</div>
+            <div class="flex-between">
+              <div><div style="font-family:'Cinzel',serif;font-size:16px;font-weight:600;color:var(--text-hi)">Cajado de Eldoria</div><div style="font-size:12px;color:var(--text-mid);margin-top:2px">ARC-00541 · Elemental · Afinidade: Fogo</div></div>
+              <div class="flex-gap"><span class="badge badge-p3">Nível 3</span><span class="badge badge-avail">Disponível</span></div>
+            </div>
+            <div class="alert alert-info mt16" style="margin-bottom:0"><span class="alert-icon">✓</span><div class="alert-text">Maestria verificada: <strong>82%</strong> — compatível com Nível 3 (mín. 60%).</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Formulário de Solicitação</div>
+            <div class="form-group">
+              <label class="form-label">Finalidade da Missão *</label>
+              <textarea class="form-textarea" id="finalidade" placeholder="Descreva a finalidade com ao menos 20 caracteres…"></textarea>
+              <div class="error-msg" id="finalidade-err" style="display:none">Campo obrigatório — mínimo de 20 caracteres.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Prazo Estimado de Devolução *</label>
+              <input class="form-input" type="date" id="prazo"/>
+            </div>
+            <div class="flex-gap">
+              <button class="btn btn-primary" onclick="submitSolic()">📤 Enviar Solicitação</button>
+              <button class="btn btn-secondary" onclick="goto('t4')">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-title">Perfil do Solicitante</div>
+            <div class="profile-mini">
+              <div class="av">TH</div>
+              <div><div class="user-name">Theron Vael</div><div class="maestria-label">Nível de Maestria</div><div class="maestria-row"><div class="maestria-bar-sm"><div class="maestria-fill-sm" style="width:82%"></div></div><div class="maestria-pct">82%</div></div></div>
+            </div>
+            <div class="detail-grid">
+              <div class="detail-field"><div class="detail-key">Escola de Afinidade</div><div class="detail-val">Elemental</div></div>
+              <div class="detail-field"><div class="detail-key">Credenciais</div><div class="detail-val">Sigma-7 / Ativa</div></div>
+            </div>
+          </div>
+          <div class="card mt16">
+            <div class="card-title">Protocolo de Empréstimo</div>
+            <div class="alert alert-info" style="margin-bottom:12px"><span class="alert-icon">ℹ</span><div class="alert-text">Relíquias de <strong>Nível 1–3</strong> requerem apenas aprovação do Arquivista Chefe.</div></div>
+            <div class="alert alert-warn"><span class="alert-icon">⚠</span><div class="alert-text">Prazo máximo de empréstimo para Nível 3: <strong>60 dias</strong>.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     T6 — DASHBOARD ARQUIVISTA
+══════════════════════════════════════════════════ -->
+<div id="t6" class="screen with-sidebar">
+  <div class="sidebar">
+    <div class="sidebar-logo"><span class="wordmark">⬡ ARCANUM</span><span class="tagline">Painel Administrativo</span></div>
+    <div class="sidebar-user"><div class="avatar">EL</div><div><div class="user-name">Elara Dusk</div><div class="user-role">Arquivista Chefe</div></div></div>
+    <nav>
+      <div class="nav-item active" onclick="goto('t6')"><span class="nav-icon">⬡</span>Dashboard</div>
+      <div class="nav-item" onclick="goto('t7')"><span class="nav-icon">⚖</span>Solicitações</div>
+      <div class="nav-item" onclick="goto('t8')"><span class="nav-icon">✦</span>Cadastrar Relíquia</div>
+    </nav>
+    <div class="sidebar-bottom"><div class="logout-btn" onclick="goto('t1')">↩ Sair</div></div>
+  </div>
+  <div class="screen-main">
+    <div class="topbar">
+      <div><div class="breadcrumb"><span class="current">Dashboard Administrativo</span></div><div class="page-title" style="margin-top:4px;">Painel do Arquivista</div></div>
+      <div class="flex-gap"><button class="btn btn-gold btn-sm" onclick="goto('t8')">+ Cadastrar Relíquia</button><button class="btn btn-primary btn-sm" onclick="goto('t7')">⚖ Analisar Solicitações</button></div>
+    </div>
+    <div class="content">
+      <div class="stat-grid">
+        <div class="stat-card amber"><div class="stat-num">4</div><div class="stat-label">Solicitações pendentes</div></div>
+        <div class="stat-card red"><div class="stat-num">2</div><div class="stat-label">Devoluções em atraso</div></div>
+        <div class="stat-card teal"><div class="stat-num">4.218</div><div class="stat-label">Relíquias no acervo</div></div>
+      </div>
+      <div class="alert alert-danger" style="margin-bottom:16px"><span class="alert-icon">🔴</span><div class="alert-text"><strong>Alerta crítico:</strong> Grimório das Almas (Nível 5) com devolução 45 dias em atraso. Guardião Caelum Drak. Escalada ao Conselho recomendada.</div></div>
+      <div class="card">
+        <div class="flex-between mb8"><div class="card-title" style="margin-bottom:0">Fila de Solicitações Pendentes</div><button class="btn btn-secondary btn-sm" onclick="goto('t7')">Ver todas</button></div>
+        <table class="arc-table">
+          <thead><tr><th>Relíquia</th><th>Guardião</th><th>Maestria</th><th>Perigo</th><th>Solicitado em</th><th>Ação</th></tr></thead>
+          <tbody>
+            <tr class="clickable" onclick="goto('t7')"><td>Cajado de Eldoria</td><td>Theron Vael</td><td style="color:var(--teal)">82%</td><td><span class="badge badge-p3">Nível 3</span></td><td style="font-size:12px;color:var(--text-mid)">1 Mai 2025</td><td><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();goto('t7')">Analisar</button></td></tr>
+            <tr class="clickable" onclick="goto('t7')"><td>Espelho da Dualidade</td><td>Mira Solvane</td><td style="color:var(--teal)">91%</td><td><span class="badge badge-p4">Nível 4</span></td><td style="font-size:12px;color:var(--text-mid)">30 Abr 2025</td><td><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();goto('t7')">Analisar</button></td></tr>
+            <tr class="clickable" onclick="goto('t7')"><td>Orbe da Presciência</td><td>Rael Voryn</td><td style="color:var(--amber)">55%</td><td><span class="badge badge-p1">Nível 1</span></td><td style="font-size:12px;color:var(--text-mid)">29 Abr 2025</td><td><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();goto('t7')">Analisar</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     T7 — APROVAR / RECUSAR
+══════════════════════════════════════════════════ -->
+<div id="t7" class="screen with-sidebar">
+  <div class="sidebar">
+    <div class="sidebar-logo"><span class="wordmark">⬡ ARCANUM</span><span class="tagline">Painel Administrativo</span></div>
+    <div class="sidebar-user"><div class="avatar">EL</div><div><div class="user-name">Elara Dusk</div><div class="user-role">Arquivista Chefe</div></div></div>
+    <nav>
+      <div class="nav-item" onclick="goto('t6')"><span class="nav-icon">⬡</span>Dashboard</div>
+      <div class="nav-item active" onclick="goto('t7')"><span class="nav-icon">⚖</span>Solicitações</div>
+      <div class="nav-item" onclick="goto('t8')"><span class="nav-icon">✦</span>Cadastrar Relíquia</div>
+    </nav>
+    <div class="sidebar-bottom"><div class="logout-btn" onclick="goto('t1')">↩ Sair</div></div>
+  </div>
+  <div class="screen-main">
+    <div class="topbar">
+      <div><div class="breadcrumb"><span onclick="goto('t6')" style="cursor:pointer">Dashboard</span> / <span class="current">Analisar Solicitação</span></div><div class="page-title" style="margin-top:4px;">Aprovar / Recusar Empréstimo</div></div>
+      <span class="badge badge-pend">Aguardando decisão</span>
+    </div>
+    <div class="content">
+      <div class="two-col">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-title">Relíquia Solicitada</div>
+            <div class="flex-between mb8"><div style="font-family:'Cinzel',serif;font-size:16px;font-weight:600">Cajado de Eldoria</div><span class="badge badge-p3">Nível 3</span></div>
+            <div class="detail-grid">
+              <div class="detail-field"><div class="detail-key">Escola</div><div class="detail-val">Elemental</div></div>
+              <div class="detail-field"><div class="detail-key">Status Atual</div><div class="detail-val" style="color:var(--teal)">Disponível</div></div>
+              <div class="detail-field"><div class="detail-key">ID</div><div class="detail-val" style="font-family:'JetBrains Mono',monospace;font-size:12px">ARC-00541</div></div>
+              <div class="detail-field"><div class="detail-key">Afinidade</div><div class="detail-val">Fogo / Éter</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Guardião Solicitante</div>
+            <div class="profile-mini">
+              <div class="av">TH</div>
+              <div><div class="user-name">Theron Vael</div><div class="maestria-label">Maestria verificada automaticamente</div><div class="maestria-row"><div class="maestria-bar-sm"><div class="maestria-fill-sm" style="width:82%"></div></div><div class="maestria-pct">82% ✓</div></div></div>
+            </div>
+            <div class="detail-key mb8">Finalidade declarada</div>
+            <div style="font-size:14px;color:var(--text-hi);font-style:italic;padding:12px;background:var(--bg-deep);border-radius:var(--r);border-left:3px solid var(--purple)">"Investigar a origem da anomalia elemental detectada na Câmara Leste — eliminar risco de colapso do véu mágico."</div>
+            <div class="detail-grid mt16">
+              <div class="detail-field"><div class="detail-key">Prazo solicitado</div><div class="detail-val">15 Jun 2025</div></div>
+              <div class="detail-field"><div class="detail-key">Data da solicitação</div><div class="detail-val">1 Mai 2025</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Decisão do Arquivista</div>
+          <div class="alert alert-info mb8" style="margin-bottom:16px"><span class="alert-icon">ℹ</span><div class="alert-text">Maestria 82% é <strong>compatível</strong> com Nível 3 (mín. 60%). Aprovação autorizada.</div></div>
+          <div class="form-group">
+            <label class="form-label">Justificativa * (obrigatória)</label>
+            <textarea class="form-textarea" id="justificativa" placeholder="Registre a justificativa da decisão. Este campo é imutável após confirmação."></textarea>
+            <div class="error-msg" id="just-err" style="display:none">Justificativa obrigatória antes de confirmar a decisão.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prazo de Devolução Definido *</label>
+            <input class="form-input" type="date" id="prazo-arq"/>
+          </div>
+          <div class="divider"></div>
+          <div style="display:flex;gap:12px">
+            <button class="btn btn-success" style="flex:1;justify-content:center" onclick="aprovar()">✓ Aprovar Empréstimo</button>
+            <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="recusar()">✕ Recusar Solicitação</button>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--text-lo);text-align:center">Esta decisão será registrada em log imutável de auditoria (RNF-05).</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     T8 — CADASTRAR RELÍQUIA
+══════════════════════════════════════════════════ -->
+<div id="t8" class="screen with-sidebar">
+  <div class="sidebar">
+    <div class="sidebar-logo"><span class="wordmark">⬡ ARCANUM</span><span class="tagline">Painel Administrativo</span></div>
+    <div class="sidebar-user"><div class="avatar">EL</div><div><div class="user-name">Elara Dusk</div><div class="user-role">Arquivista Chefe</div></div></div>
+    <nav>
+      <div class="nav-item" onclick="goto('t6')"><span class="nav-icon">⬡</span>Dashboard</div>
+      <div class="nav-item" onclick="goto('t7')"><span class="nav-icon">⚖</span>Solicitações</div>
+      <div class="nav-item active" onclick="goto('t8')"><span class="nav-icon">✦</span>Cadastrar Relíquia</div>
+    </nav>
+    <div class="sidebar-bottom"><div class="logout-btn" onclick="goto('t1')">↩ Sair</div></div>
+  </div>
+  <div class="screen-main">
+    <div class="topbar">
+      <div><div class="breadcrumb"><span onclick="goto('t6')" style="cursor:pointer">Dashboard</span> / <span class="current">Cadastrar Relíquia</span></div><div class="page-title" style="margin-top:4px;">Nova Relíquia no Acervo</div></div>
+      <span style="font-size:12px;color:var(--text-lo)">Status inicial: Em Análise</span>
+    </div>
+    <div class="content">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Dados da Relíquia</div>
+          <div class="form-group">
+            <label class="form-label">Nome da Relíquia *</label>
+            <input class="form-input" type="text" id="r-nome" placeholder="Nome completo do artefato"/>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Material de Composição *</label>
+              <input class="form-input" type="text" placeholder="Ex: Cristal de Vórtice, Ossos de Dragão"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Data de Descoberta *</label>
+              <input class="form-input" type="date"/>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Escola Mágica *</label>
+              <select class="form-select">
+                <option value="">Selecione…</option>
+                <option>Elemental</option>
+                <option>Necromancia</option>
+                <option>Ilusão</option>
+                <option>Divinação</option>
+                <option>Transmutação</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Afinidade Elemental *</label>
+              <input class="form-input" type="text" placeholder="Ex: Fogo, Sombra, Luz"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Feitiços Associados</label>
+            <input class="form-input" type="text" placeholder="Separe por vírgula: Chama Arcana, Véu de Ilusão…"/>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-title">Classificação de Risco</div>
+            <div class="form-group">
+              <label class="form-label">Nível de Perigo * (1–5)</label>
+              <input class="form-input" type="range" min="1" max="5" value="3" id="perigo-slider" oninput="updatePerigo(this.value)" style="padding:6px 0;cursor:pointer"/>
+              <div id="perigo-display" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+                <div class="perigo-scale p3" id="perigo-scale">
+                  <div class="perigo-dot active"></div><div class="perigo-dot active"></div><div class="perigo-dot active"></div><div class="perigo-dot"></div><div class="perigo-dot"></div>
+                </div>
+                <span id="perigo-label" style="font-family:'Cinzel',serif;font-size:14px;color:var(--amber)">Nível 3 — Moderado</span>
+              </div>
+            </div>
+            <div id="perigo-alert" class="alert alert-warn" style="display:none;margin-bottom:0"><span class="alert-icon">⚠</span><div class="alert-text">Relíquias de <strong>Nível 4–5</strong> requerem aprovação do Conselho Deliberativo para qualquer empréstimo futuro.</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">ID e Status</div>
+            <div class="detail-field mb8"><div class="detail-key">ID Gerado Automaticamente</div><div class="detail-val" style="font-family:'JetBrains Mono',monospace;color:var(--purple-glow)">ARC-XXXXX</div></div>
+            <div class="detail-field"><div class="detail-key">Status Inicial</div><div class="detail-val"><span class="badge badge-analise">Em Análise</span></div></div>
+          </div>
+          <button class="btn btn-gold" style="width:100%;justify-content:center;padding:14px" onclick="cadastrar()">✦ Cadastrar Relíquia</button>
+          <button class="btn btn-secondary" style="width:100%;justify-content:center" onclick="goto('t6')">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentPerfil = 'guardiao';
+
+function selectPerfil(el, p) {
+  document.querySelectorAll('.perfil-btn').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+  currentPerfil = p;
+}
+
+function goto(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function doLogin() {
+  if (currentPerfil === 'arquivista') goto('t6');
+  else goto('t2');
+}
+
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg || '✓ Operação realizada com sucesso';
+  t.style.display = 'block';
+  t.style.borderColor = color || 'var(--teal)';
+  t.style.color = color || 'var(--teal)';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+function submitSolic() {
+  const f = document.getElementById('finalidade');
+  const p = document.getElementById('prazo');
+  let ok = true;
+  if (!f.value || f.value.length < 20) {
+    f.classList.add('form-error');
+    document.getElementById('finalidade-err').style.display = 'block';
+    ok = false;
+  } else {
+    f.classList.remove('form-error');
+    document.getElementById('finalidade-err').style.display = 'none';
+  }
+  if (!ok) return;
+  showToast('✓ Solicitação registrada — Aguardando análise do Arquivista Chefe');
+  setTimeout(() => goto('t2'), 1500);
+}
+
+function aprovar() {
+  const j = document.getElementById('justificativa');
+  if (!j.value.trim()) {
+    j.classList.add('form-error');
+    document.getElementById('just-err').style.display = 'block';
+    return;
+  }
+  j.classList.remove('form-error');
+  document.getElementById('just-err').style.display = 'none';
+  showToast('✓ Empréstimo aprovado — Log de auditoria registrado', 'var(--teal)');
+  setTimeout(() => goto('t6'), 1500);
+}
+
+function recusar() {
+  const j = document.getElementById('justificativa');
+  if (!j.value.trim()) {
+    j.classList.add('form-error');
+    document.getElementById('just-err').style.display = 'block';
+    return;
+  }
+  j.classList.remove('form-error');
+  document.getElementById('just-err').style.display = 'none';
+  showToast('✕ Solicitação recusada — Guardião notificado', 'var(--red)');
+  setTimeout(() => goto('t6'), 1500);
+}
+
+function cadastrar() {
+  const n = document.getElementById('r-nome');
+  if (!n.value.trim()) {
+    n.classList.add('form-error');
+    return;
+  }
+  n.classList.remove('form-error');
+  showToast('✦ Relíquia cadastrada — ID gerado: ARC-04219', 'var(--gold)');
+  setTimeout(() => goto('t6'), 1500);
+}
+
+const perigoLabels = ['','Nível 1 — Seguro','Nível 2 — Baixo','Nível 3 — Moderado','Nível 4 — Alto','Nível 5 — Crítico'];
+const perigoColors = ['','var(--teal)','#7BE8D5','var(--amber)','#E87A3A','var(--red)'];
+const perigoClasses = ['','p1','p2','p3','p4','p5'];
+
+function updatePerigo(v) {
+  const lbl = document.getElementById('perigo-label');
+  const scale = document.getElementById('perigo-scale');
+  const alert = document.getElementById('perigo-alert');
+  lbl.textContent = perigoLabels[v];
+  lbl.style.color = perigoColors[v];
+  scale.className = 'perigo-scale ' + perigoClasses[v];
+  const dots = scale.querySelectorAll('.perigo-dot');
+  dots.forEach((d,i) => d.classList.toggle('active', i < v));
+  alert.style.display = v >= 4 ? 'flex' : 'none';
+}
+</script>
+</body>
+</html>
